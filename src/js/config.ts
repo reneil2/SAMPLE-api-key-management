@@ -4,6 +4,7 @@ import { Dropdown } from "kintone-ui-component/lib/dropdown";
 import { TextArea } from "kintone-ui-component/lib/textarea";
 import { Text } from "kintone-ui-component/lib/text";
 import { Button } from "kintone-ui-component/lib/button";
+import { Notification } from "kintone-ui-component/lib/notification";
 
 // Cliend side Config
 type Config = Array<{
@@ -119,11 +120,51 @@ const setProxyConfig = (config: Config, callback: () => void) => {
   setProxyConfigRecursive(config);
 };
 
+const validateConfig = (
+  config: Config,
+): { result: "err"; errors: Error[] } | { result: "ok" } => {
+  const errors: Error[] = [];
+
+  config.forEach(({ url, method, header, body }, i) => {
+    if (!url || !method) {
+      errors.push(new Error(`${i + 1}行目: URLとMethodは必須です。`));
+    }
+    try {
+      JSON.parse(header);
+    } catch (e) {
+      errors.push(
+        new Error(`${i + 1}行目: HeaderのJSON形式が正しくありません。`),
+      );
+    }
+    try {
+      JSON.parse(body);
+    } catch (e) {
+      errors.push(
+        new Error(`${i + 1}行目: BodyのJSON形式が正しくありません。`),
+      );
+    }
+  });
+
+  if (errors.length > 0) {
+    return { result: "err", errors };
+  }
+
+  return { result: "ok" };
+};
+
 ((PLUGIN_ID) => {
   let tableData = [...getProxyConfig(PLUGIN_ID)];
   if (tableData.length === 0) {
     tableData.push({ url: "", method: "GET", header: "", body: "" });
   }
+
+  const notification = new Notification({
+    text: "",
+    type: "danger",
+    className: "options-class",
+    duration: 8000,
+    container: document.body,
+  });
 
   const table = new Table({
     label: "Table",
@@ -183,6 +224,13 @@ const setProxyConfig = (config: Config, callback: () => void) => {
 
   button.addEventListener("click", () => {
     console.log("tabledata", tableData);
+
+    const valid = validateConfig(tableData);
+    if (valid.result === "err") {
+      notification.text = valid.errors.map((e) => e.message).join("\n");
+      notification.open();
+      return;
+    }
     // テーブルにはJSON文字列で保存されているため、JSON.parseを行う
     const parsedConfig = tableData.map((data) => {
       const { body, header, method, url } = data;
@@ -206,8 +254,8 @@ const setProxyConfig = (config: Config, callback: () => void) => {
       }));
       // 最後にsetProxyの情報をconfigとして保存
       kintone.plugin.app.setConfig({ config: JSON.stringify(config) });
+      console.log("完了");
     });
-    console.log("完了");
   });
 
   formElement?.appendChild(button);
