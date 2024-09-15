@@ -1,29 +1,165 @@
-// You can use the ESModules syntax and @kintone/rest-api-client without additional settings.
-// import { KintoneRestAPIClient } from "@kintone/rest-api-client";
+import { Table } from "kintone-ui-component/lib/table";
+import { Tooltip } from "kintone-ui-component/lib/tooltip";
+import { Dropdown } from "kintone-ui-component/lib/dropdown";
+import { TextArea } from "kintone-ui-component/lib/textarea";
+import { Text } from "kintone-ui-component/lib/text";
+import { Button } from "kintone-ui-component/lib/button";
 
-// @ts-expect-error
-const PLUGIN_ID = kintone.$PLUGIN_ID;
+const defaultConfig = [{ url: "", method: "GET", header: {}, body: {} }];
 
-const form = document.querySelector(".js-submit-settings");
-const cancelButton = document.querySelector(".js-cancel-button");
-const messageInput =
-  document.querySelector<HTMLInputElement>(".js-text-message");
-if (!(form && cancelButton && messageInput)) {
-  throw new Error("Required elements do not exist.");
-}
-const config = kintone.plugin.app.getConfig(PLUGIN_ID);
+((PLUGIN_ID) => {
+  const renderUrl = (cellData) => {
+    return new Text({
+      value: cellData,
+    });
+  };
 
-if (config.message) {
-  messageInput.value = config.message;
-}
+  const renderMethod = (cellData) => {
+    const dropdown = new Dropdown({
+      items: [
+        { label: "GET", value: "GET" },
+        { label: "POST", value: "POST" },
+        { label: "PUT", value: "PUT" },
+        { label: "DELETE", value: "DELETE" },
+      ],
+      selectedIndex: 0,
+      requiredIcon: true,
+      value: cellData,
+    });
+    return dropdown;
+  };
 
-form.addEventListener("submit", (e) => {
-  e.preventDefault();
-  kintone.plugin.app.setConfig({ message: messageInput.value }, () => {
-    alert("The plug-in settings have been saved. Please update the app!3");
-    window.location.href = "../../flow?app=" + kintone.app.getId();
+  const renderHeader = (cellData) => {
+    return new TextArea({
+      value: cellData,
+    });
+  };
+
+  const renderBody = (cellData) => {
+    return new TextArea({
+      value: cellData,
+    });
+  };
+
+  const getProxyConfig = () => {
+    const configData = kintone.plugin.app.getConfig(PLUGIN_ID);
+    const parsedConfig = configData.config ? JSON.parse(configData.config) : [];
+
+    return parsedConfig.map((s) => {
+      const a = kintone.plugin.app.getProxyConfig(s.url, s.method);
+      return {
+        url: s.url,
+        method: s.method,
+        header: JSON.stringify(a.headers),
+        body: JSON.stringify(a.data),
+      };
+    });
+  };
+
+  let tableData = [...getProxyConfig()];
+  if (tableData.length === 0) {
+    tableData.push({ url: "", method: "GET", header: "", body: "" });
+  }
+
+  const table = new Table({
+    label: "Table",
+    columns: [
+      {
+        title: new Tooltip({
+          title: "接続先のURLを入力してください",
+          container: "URL",
+        }),
+        field: "url",
+        render: renderUrl,
+      },
+      {
+        title: new Tooltip({
+          title: "通信に利用するMethodを選択してください",
+          container: "Method",
+        }),
+        field: "method",
+        render: renderMethod,
+      },
+      {
+        title: new Tooltip({
+          title: "送信したいHeaderを入力してください",
+          container: "Header",
+        }),
+        field: "header",
+        render: renderHeader,
+      },
+      {
+        title: new Tooltip({
+          title: "送信したいBodyを入力してください",
+          container: "Body",
+        }),
+        field: "body",
+        render: renderBody,
+      },
+    ],
+    data: tableData,
+    actionButton: true,
+    headerVisible: true,
+    visible: true,
   });
-});
-cancelButton.addEventListener("click", () => {
-  window.location.href = "../../" + kintone.app.getId() + "/plugin/";
-});
+
+  const formElement = document.querySelector("#form");
+  formElement?.appendChild(table);
+
+  table.addEventListener("change", (event) => {
+    console.log("table", event);
+    tableData = event.detail.data;
+  });
+
+  const button = new Button({
+    text: "保存",
+    type: "submit",
+  });
+
+  const setProxyConfig = (paramsOrigin) => {
+    const setProxyConfigRecursive = (params) => {
+      const [param, ...rest] = params;
+      const { url, method, header, body } = param;
+      if (params.length === 1) {
+        kintone.plugin.app.setProxyConfig(url, method, header, body, () => {
+          const config = paramsOrigin.map(({ url, method }) => ({
+            url,
+            method,
+          }));
+          kintone.plugin.app.setConfig({ config: JSON.stringify(config) });
+        });
+      }
+      kintone.plugin.app.setProxyConfig(url, method, header, body, () => {
+        setProxyConfigRecursive(rest);
+      });
+    };
+
+    setProxyConfigRecursive(paramsOrigin);
+  };
+
+  button.addEventListener("click", () => {
+    console.log("tabledata", tableData);
+    if (tableData === "add-row") {
+      tableData.push({ url: "", method: "GET", header: "", body: "" });
+    }
+    const adjested = tableData.map((data) => {
+      const { body, header, method, url } = data;
+      return {
+        url,
+        method,
+        header: JSON.parse(header),
+        body: JSON.parse(body),
+      };
+    });
+
+    setProxyConfig(adjested);
+    console.log("完了");
+  });
+
+  formElement?.appendChild(button);
+
+  const pluginIdElement = document.querySelector("#plugin-id");
+  if (pluginIdElement) {
+    pluginIdElement.textContent = PLUGIN_ID;
+  }
+})(kintone.$PLUGIN_ID);
