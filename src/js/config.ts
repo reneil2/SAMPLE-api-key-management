@@ -64,30 +64,63 @@ const isConfigData = (data: any): data is SavedPluginConfigData => {
   );
 };
 
-((PLUGIN_ID) => {
-  const getProxyConfig = () => {
-    const configData = kintone.plugin.app.getConfig(PLUGIN_ID);
-    if (!isConfigData(configData)) {
-      return [];
+const getProxyConfig = (pluginId: string) => {
+  const configData = kintone.plugin.app.getConfig(pluginId);
+  if (!isConfigData(configData)) {
+    return [];
+  }
+
+  const parsedConfig = JSON.parse(configData.config) as Config;
+
+  return parsedConfig.map((s) => {
+    const proxyConfigData = kintone.plugin.app.getProxyConfig(
+      s.url,
+      s.method,
+    ) as SavedProxyConfigData;
+    return {
+      url: s.url,
+      method: s.method,
+      header: JSON.stringify(proxyConfigData.headers),
+      body: JSON.stringify(proxyConfigData.data),
+    };
+  });
+};
+
+const getDeleteProxyConfig = (pluginId: string, currentConfig: Config) => {
+  const prevConfig = getProxyConfig(pluginId);
+
+  // currentConfigのデータと比較して削除対象を取得
+  const deleteTargets = prevConfig
+    .filter((prev) => {
+      return !currentConfig.some(
+        (current) => current.url === prev.url && current.method === prev.method,
+      );
+    })
+    // 削除対象は空オブジェクトにする
+    .map((d) => ({ url: d.url, method: d.method, header: {}, body: {} }));
+
+  return deleteTargets;
+};
+
+// ProxyConfigは一つずつしか設定できないため、再帰的に行えるようにする
+const setProxyConfig = (config: Config, callback: () => void) => {
+  const setProxyConfigRecursive = (params: Config) => {
+    const [param, ...rest] = params;
+    const { url, method, header, body } = param;
+    if (params.length === 1) {
+      // 最後の要素の場合はcallbackを実行できるようにする
+      kintone.plugin.app.setProxyConfig(url, method, header, body, callback);
     }
-
-    const parsedConfig = JSON.parse(configData.config) as Config;
-
-    return parsedConfig.map((s) => {
-      const proxyConfigData = kintone.plugin.app.getProxyConfig(
-        s.url,
-        s.method,
-      ) as SavedProxyConfigData;
-      return {
-        url: s.url,
-        method: s.method,
-        header: JSON.stringify(proxyConfigData.headers),
-        body: JSON.stringify(proxyConfigData.data),
-      };
+    kintone.plugin.app.setProxyConfig(url, method, header, body, () => {
+      setProxyConfigRecursive(rest);
     });
   };
 
-  let tableData = [...getProxyConfig()];
+  setProxyConfigRecursive(config);
+};
+
+((PLUGIN_ID) => {
+  let tableData = [...getProxyConfig(PLUGIN_ID)];
   if (tableData.length === 0) {
     tableData.push({ url: "", method: "GET", header: "", body: "" });
   }
@@ -148,30 +181,10 @@ const isConfigData = (data: any): data is SavedPluginConfigData => {
     type: "submit",
   });
 
-  const setProxyConfig = (paramsOrigin: Config) => {
-    const setProxyConfigRecursive = (params: Config) => {
-      const [param, ...rest] = params;
-      const { url, method, header, body } = param;
-      if (params.length === 1) {
-        kintone.plugin.app.setProxyConfig(url, method, header, body, () => {
-          const config = paramsOrigin.map((pram) => ({
-            url: param.url,
-            method: param.method,
-          }));
-          kintone.plugin.app.setConfig({ config: JSON.stringify(config) });
-        });
-      }
-      kintone.plugin.app.setProxyConfig(url, method, header, body, () => {
-        setProxyConfigRecursive(rest);
-      });
-    };
-
-    setProxyConfigRecursive(paramsOrigin);
-  };
-
   button.addEventListener("click", () => {
     console.log("tabledata", tableData);
-    const adjested = tableData.map((data) => {
+    // テーブルにはJSON文字列で保存されているため、JSON.parseを行う
+    const parsedConfig = tableData.map((data) => {
       const { body, header, method, url } = data;
       return {
         url,
@@ -181,7 +194,19 @@ const isConfigData = (data: any): data is SavedPluginConfigData => {
       };
     });
 
-    setProxyConfig(adjested);
+    // 削除されたものはProxyからも削除する処理をいれる
+    // methodとURLが一致しないものは削除対象
+    const deleteConfig = getDeleteProxyConfig(PLUGIN_ID, tableData);
+
+    // これから設定しようとするデータ、削除対象のデータをマージしてsetProxyを行う
+    setProxyConfig([...parsedConfig, ...deleteConfig], () => {
+      const config = parsedConfig.map((pram) => ({
+        url: pram.url,
+        method: pram.method,
+      }));
+      // 最後にsetProxyの情報をconfigとして保存
+      kintone.plugin.app.setConfig({ config: JSON.stringify(config) });
+    });
     console.log("完了");
   });
 
