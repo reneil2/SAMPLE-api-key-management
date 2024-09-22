@@ -25,10 +25,10 @@ type SavedProxyConfigData = {
   data: object;
 };
 
-const defaultConfig = [{ url: "", method: "GET", header: {}, data: {} }];
 const renderUrl: Render = (cellData) => {
   return new Text({
     value: cellData,
+    placeholder: "https://example.com",
   });
 };
 
@@ -50,12 +50,14 @@ const renderMethod: Render = (cellData) => {
 const renderHeader: Render = (cellData) => {
   return new TextArea({
     value: cellData,
+    placeholder: JSON.stringify({ key1: "value1", key2: "value2" }, null, 2),
   });
 };
 
 const renderdata: Render = (cellData) => {
   return new TextArea({
     value: cellData,
+    placeholder: JSON.stringify({ key1: "value1", key2: "value2" }, null, 2),
   });
 };
 
@@ -73,18 +75,24 @@ const getProxyConfig = (pluginId: string) => {
 
   const parsedConfig = JSON.parse(configData.config) as Config;
 
-  return parsedConfig.map((s) => {
-    const proxyConfigData = kintone.plugin.app.getProxyConfig(
-      s.url,
-      s.method,
-    ) as SavedProxyConfigData;
-    return {
-      url: s.url,
-      method: s.method,
-      header: JSON.stringify(proxyConfigData.headers),
-      data: JSON.stringify(proxyConfigData.data),
-    };
-  });
+  return parsedConfig
+    .map((s) => {
+      const proxyConfigData = kintone.plugin.app.getProxyConfig(
+        s.url,
+        s.method,
+      ) as SavedProxyConfigData | null;
+
+      if (!proxyConfigData) {
+        return null;
+      }
+      return {
+        url: s.url,
+        method: s.method,
+        header: JSON.stringify(proxyConfigData.headers, null, 2),
+        data: JSON.stringify(proxyConfigData.data, null, 2),
+      };
+    })
+    .filter((s) => s !== null);
 };
 
 const getDeleteProxyConfig = (pluginId: string, currentConfig: Config) => {
@@ -112,8 +120,11 @@ const setProxyConfig = (config: Config, callback: () => void) => {
       // 最後の要素の場合はcallbackを実行できるようにする
       kintone.plugin.app.setProxyConfig(url, method, header, data, callback);
     }
+
     kintone.plugin.app.setProxyConfig(url, method, header, data, () => {
-      setProxyConfigRecursive(rest);
+      setTimeout(() => {
+        setProxyConfigRecursive(rest);
+      }, 100); // DBがロックされる可能性があるのでスリープを挟む
     });
   };
 
@@ -126,8 +137,11 @@ const validateConfig = (
   const errors: Error[] = [];
 
   config.forEach(({ url, method, header, data }, i) => {
-    if (!url || !method) {
-      errors.push(new Error(`${i + 1}行目: URLとMethodは必須です。`));
+    if (!url) {
+      errors.push(new Error(`${i + 1}行目: URLは必須です。`));
+    }
+    if (!method) {
+      errors.push(new Error(`${i + 1}行目: Methodは必須です。`));
     }
     try {
       JSON.parse(header);
