@@ -20,16 +20,14 @@
     "css": [
       "css/51-modern-default.css",
       "css/config.css"
-    ],
-    "required_params": [
-      "message"
     ]
   },
   "name": {
     "en": "manage-api-key-plugin",
-    "ja": "APIキー管理プラグイン"
+    "ja": "機密情報管理プラグイン"
   },
   "description": {
-    "en": "manage-api-key-plugin"
+    "en": "manage-api-key-plugin",
+    "ja": "外部連携のためにAPIキーや機密情報を秘匿して管理することができます。"
   }
 }
