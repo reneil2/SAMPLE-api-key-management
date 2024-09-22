@@ -1,7 +1,28 @@
-.settings-heading {
-  padding: 1em 0;
+#usage h2 {
+  font-size: larger;
 }
 
-.kintoneplugin-input-text {
-  width: 20em;
+#usage ol {
+  list-style-type: decimal;
+  padding-left: 20px;
+}
+
+#usage ol #description-for-columns {
+  list-style-type: circle;
+}
+
+#form {
+  margin-top: 20px;
+}
+
+#save-button {
+  margin-top: 10px;
+}
+
+#plugin-id {
+  margin-top: 20px;
+}
+
+#plugin-id {
+  color: #666;
 }

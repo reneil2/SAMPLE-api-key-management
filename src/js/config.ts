@@ -11,7 +11,7 @@ type Config = Array<{
   url: string;
   method: "GET" | "POST" | "PUT" | "DELETE";
   header: string;
-  body: string;
+  data: string;
 }>;
 
 // 保存されているプラグイン設定データ
@@ -25,7 +25,7 @@ type SavedProxyConfigData = {
   data: object;
 };
 
-const defaultConfig = [{ url: "", method: "GET", header: {}, body: {} }];
+const defaultConfig = [{ url: "", method: "GET", header: {}, data: {} }];
 const renderUrl: Render = (cellData) => {
   return new Text({
     value: cellData,
@@ -53,7 +53,7 @@ const renderHeader: Render = (cellData) => {
   });
 };
 
-const renderBody: Render = (cellData) => {
+const renderdata: Render = (cellData) => {
   return new TextArea({
     value: cellData,
   });
@@ -82,7 +82,7 @@ const getProxyConfig = (pluginId: string) => {
       url: s.url,
       method: s.method,
       header: JSON.stringify(proxyConfigData.headers),
-      body: JSON.stringify(proxyConfigData.data),
+      data: JSON.stringify(proxyConfigData.data),
     };
   });
 };
@@ -98,7 +98,7 @@ const getDeleteProxyConfig = (pluginId: string, currentConfig: Config) => {
       );
     })
     // 削除対象は空オブジェクトにする
-    .map((d) => ({ url: d.url, method: d.method, header: {}, body: {} }));
+    .map((d) => ({ url: d.url, method: d.method, header: {}, data: {} }));
 
   return deleteTargets;
 };
@@ -107,12 +107,12 @@ const getDeleteProxyConfig = (pluginId: string, currentConfig: Config) => {
 const setProxyConfig = (config: Config, callback: () => void) => {
   const setProxyConfigRecursive = (params: Config) => {
     const [param, ...rest] = params;
-    const { url, method, header, body } = param;
+    const { url, method, header, data } = param;
     if (params.length === 1) {
       // 最後の要素の場合はcallbackを実行できるようにする
-      kintone.plugin.app.setProxyConfig(url, method, header, body, callback);
+      kintone.plugin.app.setProxyConfig(url, method, header, data, callback);
     }
-    kintone.plugin.app.setProxyConfig(url, method, header, body, () => {
+    kintone.plugin.app.setProxyConfig(url, method, header, data, () => {
       setProxyConfigRecursive(rest);
     });
   };
@@ -125,7 +125,7 @@ const validateConfig = (
 ): { result: "err"; errors: Error[] } | { result: "ok" } => {
   const errors: Error[] = [];
 
-  config.forEach(({ url, method, header, body }, i) => {
+  config.forEach(({ url, method, header, data }, i) => {
     if (!url || !method) {
       errors.push(new Error(`${i + 1}行目: URLとMethodは必須です。`));
     }
@@ -137,10 +137,10 @@ const validateConfig = (
       );
     }
     try {
-      JSON.parse(body);
+      JSON.parse(data);
     } catch (e) {
       errors.push(
-        new Error(`${i + 1}行目: BodyのJSON形式が正しくありません。`),
+        new Error(`${i + 1}行目: dataのJSON形式が正しくありません。`),
       );
     }
   });
@@ -155,7 +155,7 @@ const validateConfig = (
 ((PLUGIN_ID) => {
   let tableData = [...getProxyConfig(PLUGIN_ID)];
   if (tableData.length === 0) {
-    tableData.push({ url: "", method: "GET", header: "", body: "" });
+    tableData.push({ url: "", method: "GET", header: "", data: "" });
   }
 
   const notification = new Notification({
@@ -167,7 +167,6 @@ const validateConfig = (
   });
 
   const table = new Table({
-    label: "Table",
     columns: [
       {
         title: new Tooltip({
@@ -195,17 +194,18 @@ const validateConfig = (
       },
       {
         title: new Tooltip({
-          title: "送信したいBodyを入力してください",
-          container: "Body",
+          title: "送信したいdataを入力してください",
+          container: "Data",
         }),
-        field: "body",
-        render: renderBody,
+        field: "data",
+        render: renderdata,
       },
     ],
     data: tableData,
     actionButton: true,
     headerVisible: true,
     visible: true,
+    id: "setting-table",
   });
 
   const formElement = document.querySelector("#form");
@@ -220,6 +220,7 @@ const validateConfig = (
   const button = new Button({
     text: "保存",
     type: "submit",
+    id: "save-button",
   });
 
   button.addEventListener("click", () => {
@@ -232,13 +233,13 @@ const validateConfig = (
       return;
     }
     // テーブルにはJSON文字列で保存されているため、JSON.parseを行う
-    const parsedConfig = tableData.map((data) => {
-      const { body, header, method, url } = data;
+    const parsedConfig = tableData.map((row) => {
+      const { data, header, method, url } = row;
       return {
         url,
         method,
         header: JSON.parse(header),
-        body: JSON.parse(body),
+        data: JSON.parse(data),
       };
     });
 
@@ -262,6 +263,6 @@ const validateConfig = (
 
   const pluginIdElement = document.querySelector("#plugin-id");
   if (pluginIdElement) {
-    pluginIdElement.textContent = PLUGIN_ID;
+    pluginIdElement.textContent = `プラグインID: ${PLUGIN_ID}`;
   }
 })(kintone.$PLUGIN_ID);

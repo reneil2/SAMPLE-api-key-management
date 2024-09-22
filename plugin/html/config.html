@@ -1,8 +1,26 @@
 <section class="settings">
-  <h1>test</h1>
-  <p>
-    これはテストです
-  </p>
-  <span id="plugin-id"></span>
+  <section id="description">
+    外部連携のためにAPIキーや機密情報を秘匿して管理することができます。<br>
+    このプラグインを利用することで、機密情報をkintone上に保存し、
+    <a href="https://cybozu.dev/ja/kintone/docs/js-api/plugins/kintone-plug-in-proxy" target="_blank" >kintone.plugin.app.proxy()</a>
+    を利用することで機密情報を隠蔽しながら外部連携を行うことができます。
+  </section>
+  <section id="usage">
+    <h2>使い方</h2>
+    <p>以下の手順に従ってください:</p>
+    <ol>
+      <li>外部連携に利用するための機密情報を作成、取得します。</li>
+      <li>取得した機密情報をこの画面から保存します。
+        <ol id="description-for-columns">
+          <li>URL: 送信先に指定したいURLを指定します。</li>
+          <li>Method: 通信に利用したいMethodを指定します。</li>
+          <li>Header: 通信時にリクエストヘッダーに指定したい情報をJSON形式で指定します。</li>
+          <li>Data: 通信時にリクエストボディに指定したい情報をJSON形式で指定します。</li>
+        </ol>
+      </li>
+      <li>JavaScriptカスタマイズ時に外部連携を kintone.plugin.app.proxy() を利用して行うようにし、プラグインIDは下記に表示されているこのプラグインのIDを指定してください。</li>
+    </ol>
+  </section>
+  <div id="plugin-id"></div>
   <div id="form"></div>
 </section>
