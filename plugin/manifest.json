@@ -24,10 +24,10 @@
   },
   "name": {
     "en": "manage-api-key-plugin",
-    "ja": "機密情報管理プラグイン"
+    "ja": "認証情報管理プラグイン"
   },
   "description": {
     "en": "manage-api-key-plugin",
-    "ja": "外部連携のためにAPIキーや機密情報を秘匿して管理することができます。"
+    "ja": "外部連携のためにAPIキーや認証情報を秘匿して管理することができます。"
   }
 }
