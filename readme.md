@@ -9,6 +9,6 @@
 1. リポジトリをクローンします。
 1. 依存関係をインストールします。  
     `npm install`
-1. プラグインをビルドします。  
+1. プラグインをビルドします。ビルドすると`plugin.zip`が作成されます。  
     `npm run build:prod`
-1. plugin.zip をkintoneにアップロードします。
+1. 作成された`plugin.zip`をkintoneにアップロードします。
