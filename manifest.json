@@ -1,0 +1,23 @@
+{
+    "manifest_version": 1,
+    "version": "1.0.0",
+    "type": "APP",
+    "name": {
+      "ja": "apiプラグイン",
+      "en": "api plug-in"
+    },
+    "description": {
+      "ja": "api秘匿プラグインです。",
+      "en": "This plugin checks token"
+    },
+    "icon": "image/icon.png",
+    "homepage_url": {
+      "ja": "https://cybozu.dev/ja/tutorials/hello-kinplugin/",
+      "en": "https://cybozu.dev/ja/tutorials/hello-kinplugin/"
+    },
+    "desktop": {
+      "js": [
+        "js/desktop.js"
+      ]
+    }
+  }
